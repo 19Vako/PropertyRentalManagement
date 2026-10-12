@@ -1,0 +1,43 @@
+@model PropertyRental.Web.Models.RentalApplicationFormViewModel
+@{
+    var isEdit = Model.Id != 0;
+    ViewData["Title"] = isEdit ? "Edit application" : "New application";
+}
+
+<div class="mb-4">
+    <a asp-action="Index" class="text-decoration-none">My applications</a>
+    <h1 class="h2 mt-2">@ViewData["Title"]</h1>
+</div>
+
+<form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.Id : null)" method="post" class="filter-panel row g-3">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger validation-summary"></div>
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="UnitId" type="hidden" />
+    <div class="col-12">
+        <div class="form-control-plaintext border rounded p-3 bg-light">Unit: <strong>@Model.UnitLabel</strong></div>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="DesiredMoveInDate" class="form-label">Desired move-in date</label>
+        <input asp-for="DesiredMoveInDate" type="date" class="form-control" />
+        <span asp-validation-for="DesiredMoveInDate" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="HouseholdSize" class="form-label">Household size</label>
+        <input asp-for="HouseholdSize" type="number" min="1" max="255" class="form-control" />
+        <span asp-validation-for="HouseholdSize" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="MonthlyIncome" class="form-label">Monthly household income</label>
+        <div class="input-group"><span class="input-group-text">$</span><input asp-for="MonthlyIncome" type="number" min="0" step="0.01" class="form-control" /></div>
+        <span asp-validation-for="MonthlyIncome" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="ApplicantMessage" class="form-label">Message</label>
+        <textarea asp-for="ApplicantMessage" rows="5" maxlength="2000" class="form-control"></textarea>
+        <span asp-validation-for="ApplicantMessage" class="text-danger"></span>
+    </div>
+    <div class="col-12 d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" type="submit">Save draft</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>

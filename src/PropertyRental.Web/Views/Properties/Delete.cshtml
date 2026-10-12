@@ -1,0 +1,18 @@
+@model PropertyRental.Domain.Entities.Property
+@{
+    ViewData["Title"] = "Delete property";
+}
+
+<a asp-action="Details" asp-route-id="@Model.Id" class="text-decoration-none">Back to property</a>
+<h1 class="h2 mt-2">Delete @Model.Name?</h1>
+<p class="text-muted">A property can only be deleted after all its units have been removed.</p>
+
+<dl class="row mt-4">
+    <dt class="col-sm-3">Address</dt><dd class="col-sm-9">@Model.StreetAddress, @Model.City</dd>
+    <dt class="col-sm-3">Units</dt><dd class="col-sm-9">@Model.Units.Count</dd>
+</dl>
+
+<form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
+    <button type="submit" class="btn btn-danger" disabled="@(Model.Units.Count > 0)">Delete property</button>
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancel</a>
+</form>

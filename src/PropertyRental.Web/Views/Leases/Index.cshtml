@@ -1,0 +1,78 @@
+@model IReadOnlyList<PropertyRental.Web.Models.LeaseListItemViewModel>
+@using PropertyRental.Domain.Enums
+@{
+    ViewData["Title"] = "Leases";
+    var selectedStatus = ViewData["StatusFilter"] as string ?? "active";
+    var search = ViewData["Search"] as string;
+}
+
+<div class="page-header">
+    <h1 class="page-header__title h2">Leases</h1>
+    <p class="page-header__meta">@Model.Count contracts</p>
+</div>
+
+@if (TempData["StatusMessage"] is string statusMessage)
+{
+    <div class="alert alert-success" role="status">@statusMessage</div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
+
+<form method="get" class="filter-panel row g-3 align-items-end">
+    <div class="col-sm-6 col-lg-4">
+        <label for="search" class="form-label">Search</label>
+        <input id="search" name="search" value="@search" class="form-control" placeholder="Tenant, property, city, or unit" />
+    </div>
+    <div class="col-sm-4 col-lg-3">
+        <label for="status" class="form-label">Status</label>
+        <select id="status" name="status" class="form-select">
+            <option value="all" selected="@(selectedStatus == "all")">All statuses</option>
+            @foreach (var option in Enum.GetValues<LeaseStatus>())
+            {
+                <option value="@option.ToString()" selected="@(string.Equals(selectedStatus, option.ToString(), StringComparison.OrdinalIgnoreCase))">@option</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-primary" type="submit">Filter</button>
+        <a class="btn btn-link" asp-action="Index">Active</a>
+    </div>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">
+        <h2>No leases match</h2>
+        <p>Try another search or select a different lease status.</p>
+    </div>
+}
+else
+{
+    <div class="table-shell table-responsive">
+        <table class="table align-middle" aria-label="Leases table">
+            <thead><tr><th scope="col">Tenant</th><th scope="col">Property / unit</th><th scope="col">Term</th><th scope="col">Monthly rent</th><th scope="col">Status</th><th scope="col" class="text-end">Action</th></tr></thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    var leaseStatusClass = item.Lease.Status.Name switch
+                    {
+                        "Active" => "status-badge status-badge--success",
+                        "Expired" => "status-badge status-badge--secondary",
+                        "Terminated" => "status-badge status-badge--warning",
+                        _ => "status-badge status-badge--light"
+                    };
+                    <tr>
+                        <td><a asp-action="Details" asp-route-id="@item.Lease.Id">@item.TenantName</a><span class="muted-stack">@item.TenantEmail</span></td>
+                        <td>@item.Lease.Unit.Property.Name / @item.Lease.Unit.UnitNumber<span class="muted-stack">@item.Lease.Unit.Property.City</span></td>
+                        <td>@item.Lease.StartDate.ToString("d") – @item.Lease.EndDate.ToString("d")</td>
+                        <td>@item.Lease.MonthlyRent.ToString("C")</td>
+                        <td><span class="@leaseStatusClass">@item.Lease.Status.Name</span></td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@item.Lease.Id">Open</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

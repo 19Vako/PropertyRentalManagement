@@ -1,0 +1,16 @@
+@{
+    ViewData["Title"] = "Home";
+}
+
+<section class="p-5 mb-4 bg-light rounded-3">
+    <div class="container-fluid py-3">
+        <h1 class="display-5 fw-semibold">Find your next home</h1>
+        <p class="col-md-8 fs-5">
+            Browse available rental units, manage applications, and review leases in one place.
+        </p>
+        @if (User.Identity?.IsAuthenticated != true)
+        {
+            <a class="btn btn-primary btn-lg" asp-area="Identity" asp-page="/Account/Register">Get started</a>
+        }
+    </div>
+</section>

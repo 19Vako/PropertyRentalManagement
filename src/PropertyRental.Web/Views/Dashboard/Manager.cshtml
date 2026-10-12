@@ -1,0 +1,182 @@
+@model PropertyRental.Web.Models.ManagerDashboardViewModel
+@using PropertyRental.Domain.Enums
+@{
+    ViewData["Title"] = "Manager dashboard";
+    var applicant = Model.Applicant;
+}
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+        <h1 class="page-header__title h2">Manager dashboard</h1>
+        <p class="page-header__meta">Portfolio and application overview</p>
+    </div>
+    <a class="btn btn-primary" asp-controller="Applications" asp-action="ReviewQueue">Open review queue</a>
+</div>
+
+<section class="row g-3 kpi-grid" aria-label="Application summary">
+    <div class="col-6 col-xl-2">
+        <div class="kpi-card">
+            <p class="kpi-card__label">Pending review</p>
+            <p class="kpi-card__value">@Model.PendingCount</p>
+        </div>
+    </div>
+    <div class="col-6 col-xl-2">
+        <div class="kpi-card">
+            <p class="kpi-card__label">Approved</p>
+            <p class="kpi-card__value">@Model.ApprovedCount</p>
+        </div>
+    </div>
+    <div class="col-6 col-xl-2">
+        <div class="kpi-card">
+            <p class="kpi-card__label">Rejected</p>
+            <p class="kpi-card__value">@Model.RejectedCount</p>
+        </div>
+    </div>
+    <div class="col-6 col-xl-2">
+        <div class="kpi-card">
+            <p class="kpi-card__label">Returned</p>
+            <p class="kpi-card__value">@Model.ReturnedCount</p>
+        </div>
+    </div>
+    <div class="col-6 col-xl-2">
+        <div class="kpi-card">
+            <p class="kpi-card__label">Active leases</p>
+            <p class="kpi-card__value">@Model.ActiveLeaseCount</p>
+        </div>
+    </div>
+    <div class="col-6 col-xl-2">
+        <div class="kpi-card">
+            <p class="kpi-card__label">Properties / units</p>
+            <p class="kpi-card__value">@Model.ActivePropertyCount <span class="fs-6 text-muted">/ @Model.AvailableUnitCount</span></p>
+        </div>
+    </div>
+</section>
+
+@if (TempData["StatusMessage"] is string statusMessage)
+{
+    <div class="alert alert-success" role="status">@statusMessage</div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
+
+<form asp-controller="Dashboard" asp-action="Manager" method="get" class="filter-panel row g-3 align-items-end">
+    <div class="col-sm-6 col-lg-2">
+        <label for="status" class="form-label">Application status</label>
+        <select id="status" name="Status" class="form-select">
+            <option value="">All statuses</option>
+            @foreach (var status in Enum.GetValues<ApplicationStatus>())
+            {
+                <option value="@((byte)status)" selected="@(Model.Status == status)">@status</option>
+            }
+        </select>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <label for="propertyId" class="form-label">Property</label>
+        <select id="propertyId" name="PropertyId" class="form-select">
+            <option value="">All properties</option>
+            @foreach (var property in Model.Properties)
+            {
+                <option value="@property.Id" selected="@(Model.PropertyId == property.Id)">@property.Name, @property.City</option>
+            }
+        </select>
+    </div>
+    <div class="col-sm-6 col-lg-2">
+        <label for="unitId" class="form-label">Unit</label>
+        <select id="unitId" name="UnitId" class="form-select">
+            <option value="">All units</option>
+            @foreach (var unit in Model.Units)
+            {
+                <option value="@unit.Id" selected="@(Model.UnitId == unit.Id)">@unit.PropertyName / @unit.UnitNumber</option>
+            }
+        </select>
+    </div>
+    <div class="col-sm-6 col-lg-2">
+        <label for="applicant" class="form-label">Applicant</label>
+        <input id="applicant" name="Applicant" value="@applicant" class="form-control" placeholder="Name, email, or ID" />
+    </div>
+    <div class="col-sm-6 col-lg-2">
+        <label for="sortBy" class="form-label">Sort by</label>
+        <select id="sortBy" name="SortBy" class="form-select">
+            <option value="submitted" selected="@(Model.SortBy == "submitted")">Submitted date</option>
+            <option value="updated" selected="@(Model.SortBy == "updated")">Last updated</option>
+            <option value="created" selected="@(Model.SortBy == "created")">Created date</option>
+        </select>
+    </div>
+    <input type="hidden" name="Page" value="1" />
+    <div class="col-auto d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-primary" type="submit">Apply filters</button>
+        <a class="btn btn-link" asp-controller="Dashboard" asp-action="Manager">Clear</a>
+    </div>
+</form>
+
+<div class="section-header">
+    <h2 class="h4">Applications <span class="text-muted">@Model.TotalCount</span></h2>
+    <span class="small text-muted">Page @Model.Page of @Model.TotalPages</span>
+</div>
+
+@if (Model.Applications.Count == 0)
+{
+    <div class="empty-state">
+        <h3>No applications match</h3>
+        <p>Try a different filter combination or reset the search.</p>
+    </div>
+}
+else
+{
+    <div class="table-shell table-responsive">
+        <table class="table align-middle" aria-label="Manager applications table">
+            <thead>
+                <tr><th scope="col">Applicant</th><th scope="col">Property / unit</th><th scope="col">Status</th><th scope="col">Submitted</th><th scope="col">Updated</th><th scope="col" class="text-end">Action</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var application in Model.Applications)
+                {
+                    var status = (ApplicationStatus)application.StatusId;
+                    var badgeClass = status switch
+                    {
+                        ApplicationStatus.Approved => "status-badge status-badge--success",
+                        ApplicationStatus.Rejected or ApplicationStatus.Withdrawn => "status-badge status-badge--secondary",
+                        ApplicationStatus.ReturnedForCorrection => "status-badge status-badge--warning",
+                        ApplicationStatus.Submitted or ApplicationStatus.UnderReview => "status-badge status-badge--primary",
+                        _ => "status-badge status-badge--light"
+                    };
+                    var reviewable = status is ApplicationStatus.Submitted or ApplicationStatus.UnderReview;
+                    <tr>
+                        <td>@application.ApplicantUserId</td>
+                        <td>@application.Unit.Property.Name / @application.Unit.UnitNumber<span class="muted-stack">@application.Unit.Property.City</span></td>
+                        <td><span class="@badgeClass">@application.Status.Name</span></td>
+                        <td>@(application.SubmittedUtc?.ToLocalTime().ToString("g") ?? "-")</td>
+                        <td>@application.UpdatedUtc.ToLocalTime().ToString("g")</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm @(reviewable ? "btn-primary" : "btn-outline-secondary")"
+                               asp-controller="Applications" asp-action="Review" asp-route-id="@application.Id">
+                                @(reviewable ? "Review" : "Open")
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <nav class="d-flex justify-content-between border-top pt-3" aria-label="Application pages">
+        <span>
+            @if (Model.Page > 1)
+            {
+                <a class="btn btn-outline-secondary btn-sm" asp-controller="Dashboard" asp-action="Manager"
+                   asp-route-Status="@Model.Status" asp-route-PropertyId="@Model.PropertyId" asp-route-UnitId="@Model.UnitId"
+                   asp-route-Applicant="@Model.Applicant" asp-route-SortBy="@Model.SortBy" asp-route-Page="@(Model.Page - 1)">Previous</a>
+            }
+        </span>
+        <span>
+            @if (Model.Page < Model.TotalPages)
+            {
+                <a class="btn btn-outline-secondary btn-sm" asp-controller="Dashboard" asp-action="Manager"
+                   asp-route-Status="@Model.Status" asp-route-PropertyId="@Model.PropertyId" asp-route-UnitId="@Model.UnitId"
+                   asp-route-Applicant="@Model.Applicant" asp-route-SortBy="@Model.SortBy" asp-route-Page="@(Model.Page + 1)">Next</a>
+            }
+        </span>
+    </nav>
+}

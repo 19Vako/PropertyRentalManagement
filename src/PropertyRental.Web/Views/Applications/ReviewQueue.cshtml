@@ -1,0 +1,77 @@
+@model IReadOnlyList<PropertyRental.Domain.Entities.RentalApplication>
+@using PropertyRental.Domain.Enums
+@{
+    ViewData["Title"] = "Review queue";
+    var status = ViewData["Status"] as ApplicationStatus?;
+    var search = ViewData["Search"] as string;
+}
+
+<div class="page-header">
+    <h1 class="page-header__title h2">Application review</h1>
+    <p class="page-header__meta">@Model.Count applications in this queue</p>
+</div>
+
+@if (TempData["StatusMessage"] is string statusMessage)
+{
+    <div class="alert alert-success" role="status">@statusMessage</div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
+
+<form method="get" class="filter-panel row g-3 align-items-end">
+    <div class="col-sm-6 col-lg-4">
+        <label for="search" class="form-label">Search</label>
+        <input id="search" name="search" value="@search" class="form-control" placeholder="Applicant ID, property, city, or unit" />
+    </div>
+    <div class="col-sm-4 col-lg-3">
+        <label for="status" class="form-label">Status</label>
+        <select id="status" name="status" class="form-select">
+            <option value="">Submitted and under review</option>
+            @foreach (var option in Enum.GetValues<ApplicationStatus>())
+            {
+                <option value="@((byte)option)" selected="@(status == option)">@option</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-primary" type="submit">Filter</button>
+        <a class="btn btn-link" asp-action="ReviewQueue">Clear</a>
+    </div>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">
+        <h2>No applications waiting</h2>
+        <p>There are no applications in the queue for the selected search.</p>
+    </div>
+}
+else
+{
+    <div class="table-shell table-responsive">
+        <table class="table align-middle" aria-label="Review queue table">
+            <thead><tr><th scope="col">Applicant</th><th scope="col">Property / unit</th><th scope="col">Move-in</th><th scope="col">Submitted</th><th scope="col">Status</th><th scope="col" class="text-end">Action</th></tr></thead>
+            <tbody>
+                @foreach (var application in Model)
+                {
+                    var statusClass = application.StatusId switch
+                    {
+                        (byte)ApplicationStatus.Submitted or (byte)ApplicationStatus.UnderReview => "status-badge status-badge--primary",
+                        (byte)ApplicationStatus.ReturnedForCorrection => "status-badge status-badge--warning",
+                        _ => "status-badge status-badge--secondary"
+                    };
+                    <tr>
+                        <td>@application.ApplicantUserId</td>
+                        <td>@application.Unit.Property.Name / @application.Unit.UnitNumber<span class="muted-stack">@application.Unit.Property.City</span></td>
+                        <td>@(application.DesiredMoveInDate?.ToString("d") ?? "Not set")</td>
+                        <td>@(application.SubmittedUtc?.ToLocalTime().ToString("g") ?? "-")</td>
+                        <td><span class="@statusClass">@application.Status.Name</span></td>
+                        <td class="text-end"><a class="btn btn-sm btn-primary" asp-action="Review" asp-route-id="@application.Id">Review</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

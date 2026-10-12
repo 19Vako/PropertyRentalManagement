@@ -1,0 +1,167 @@
+@model PropertyRental.Web.Models.RentalApplicationDetailsViewModel
+@{
+    var application = Model.Application;
+    ViewData["Title"] = $"Application {application.Id}";
+}
+
+@if (TempData["StatusMessage"] is string statusMessage)
+{
+    <div class="alert alert-success" role="status">@statusMessage</div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
+
+@{
+    var statusClass = application.StatusId switch
+    {
+        (byte)PropertyRental.Domain.Enums.ApplicationStatus.Approved => "status-badge status-badge--success",
+        (byte)PropertyRental.Domain.Enums.ApplicationStatus.Rejected or (byte)PropertyRental.Domain.Enums.ApplicationStatus.Withdrawn => "status-badge status-badge--secondary",
+        (byte)PropertyRental.Domain.Enums.ApplicationStatus.ReturnedForCorrection => "status-badge status-badge--warning",
+        (byte)PropertyRental.Domain.Enums.ApplicationStatus.Submitted or (byte)PropertyRental.Domain.Enums.ApplicationStatus.UnderReview => "status-badge status-badge--primary",
+        _ => "status-badge status-badge--light"
+    };
+}
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+        <a asp-action="@(Model.IsManager ? "ReviewQueue" : "Index")" class="text-decoration-none">@(Model.IsManager ? "Review queue" : "My applications")</a>
+        <h1 class="page-header__title h2 mt-2">Application #@application.Id</h1>
+        <p class="page-header__meta">@application.Unit.Property.Name / Unit @application.Unit.UnitNumber</p>
+    </div>
+    <span class="@statusClass">@application.Status.Name</span>
+</div>
+
+<dl class="row g-3 border-top pt-4 card-surface p-3 mb-4">
+    @if (Model.IsManager)
+    {
+        <div class="row">
+            <dt class="col-sm-3">Applicant</dt>
+            <dd class="col-sm-9">@application.ApplicantUserId</dd>
+        </div>
+    }
+    <dt class="col-sm-3">Desired move-in</dt><dd class="col-sm-9">@(application.DesiredMoveInDate?.ToString("D") ?? "Not set")</dd>
+    <dt class="col-sm-3">Household size</dt><dd class="col-sm-9">@application.HouseholdSize</dd>
+    <dt class="col-sm-3">Monthly income</dt><dd class="col-sm-9">@(application.MonthlyIncome?.ToString("C") ?? "Not provided")</dd>
+    <dt class="col-sm-3">Message</dt><dd class="col-sm-9">@(application.ApplicantMessage ?? "-")</dd>
+    <dt class="col-sm-3">Created</dt><dd class="col-sm-9">@application.CreatedUtc.ToLocalTime().ToString("g")</dd>
+    <dt class="col-sm-3">Last updated</dt><dd class="col-sm-9">@application.UpdatedUtc.ToLocalTime().ToString("g")</dd>
+</dl>
+
+@if (application.Lease is not null)
+{
+    <div class="border-top pt-3 mb-4">
+        <h2 class="h4">Lease</h2>
+        <dl class="row">
+            <dt class="col-sm-3">Status</dt><dd class="col-sm-9">@application.Lease.Status.Name</dd>
+            <dt class="col-sm-3">Term</dt><dd class="col-sm-9">@application.Lease.StartDate.ToString("D") – @application.Lease.EndDate.ToString("D")</dd>
+            <dt class="col-sm-3">Monthly rent</dt><dd class="col-sm-9">@application.Lease.MonthlyRent.ToString("C")</dd>
+        </dl>
+    </div>
+}
+
+<div class="d-flex flex-wrap gap-2 border-top pt-3 mb-4">
+    @if (Model.CanEdit)
+    {
+        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@application.Id">Edit draft</a>
+    }
+    @if (Model.CanSubmit)
+    {
+        <form asp-action="Submit" asp-route-id="@application.Id" method="post">
+            <button class="btn btn-primary" type="submit">@(application.StatusId == (byte)PropertyRental.Domain.Enums.ApplicationStatus.ReturnedForCorrection ? "Resubmit" : "Submit application")</button>
+        </form>
+    }
+    @if (Model.CanWithdraw)
+    {
+        <form asp-action="Withdraw" asp-route-id="@application.Id" method="post">
+            <button class="btn btn-outline-danger" type="submit">Withdraw</button>
+        </form>
+    }
+    @if (Model.CanStartReview)
+    {
+        <form asp-action="StartReview" asp-route-id="@application.Id" method="post">
+            <button class="btn btn-primary" type="submit">Start review</button>
+        </form>
+    }
+</div>
+
+<section class="border-top pt-4 mb-4">
+    @if (Model.CanApprove || Model.CanReject)
+    {
+        <h2 class="h4">Manager decision</h2>
+        <div class="row g-3">
+            @if (Model.CanApprove)
+            {
+                <div class="col-lg-6">
+                    <form asp-action="Approve" method="post" class="border p-3 h-100">
+                        <input type="hidden" name="ApplicationId" value="@application.Id" />
+                        <label for="approveNotes" class="form-label">Approval notes</label>
+                        <textarea id="approveNotes" name="Notes" class="form-control mb-3" rows="3" maxlength="2000" required></textarea>
+                        <button type="submit" class="btn btn-success">Approve and create lease</button>
+                    </form>
+                </div>
+            }
+            @if (Model.CanReject)
+            {
+                <div class="col-lg-6">
+                    <form asp-action="Reject" method="post" class="border p-3 h-100">
+                        <input type="hidden" name="ApplicationId" value="@application.Id" />
+                        <label for="rejectNotes" class="form-label">Rejection reason</label>
+                        <textarea id="rejectNotes" name="Notes" class="form-control mb-3" rows="3" maxlength="2000" required></textarea>
+                        <button type="submit" class="btn btn-outline-danger">Reject application</button>
+                    </form>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+<section class="border-top pt-4 mb-4">
+    @if (Model.CanReturnForCorrection)
+    {
+        <h2 class="h4">Return for correction</h2>
+        <form asp-action="ReturnForCorrection" method="post" class="row g-3">
+            <input type="hidden" name="ApplicationId" value="@application.Id" />
+            <div class="col-12">
+                <label for="reviewNotes" class="form-label">Notes for applicant</label>
+                <textarea id="reviewNotes" name="Notes" class="form-control" rows="3" maxlength="2000" required></textarea>
+            </div>
+            <div class="col-12"><button type="submit" class="btn btn-outline-primary">Return application</button></div>
+        </form>
+    }
+</section>
+
+<section class="border-top pt-4 mb-4">
+    <h2 class="h4">Review notes</h2>
+    @foreach (var review in application.ApplicationReviews.OrderByDescending(item => item.CreatedUtc))
+    {
+        <article class="border-bottom py-3">
+            <div class="d-flex justify-content-between gap-3"><strong>@review.Decision</strong><time class="text-muted">@review.CreatedUtc.ToLocalTime().ToString("g")</time></div>
+            <p class="mb-0 mt-2">@review.Notes</p>
+        </article>
+    }
+</section>
+
+<section class="border-top pt-4">
+    <h2 class="h4">Activity</h2>
+    @if (application.Activities.Count == 0)
+    {
+        <p class="text-muted">No activity recorded.</p>
+    }
+    else
+    {
+        <ol class="list-unstyled">
+            @foreach (var activity in application.Activities.OrderByDescending(item => item.CreatedUtc))
+            {
+                <li class="border-bottom py-3">
+                    <div class="d-flex justify-content-between gap-3"><strong>@activity.Type</strong><time class="text-muted">@activity.CreatedUtc.ToLocalTime().ToString("g")</time></div>
+                    @if (!string.IsNullOrWhiteSpace(activity.Notes))
+                    {
+                        <p class="mb-0 mt-1">@activity.Notes</p>
+                    }
+                </li>
+            }
+        </ol>
+    }
+</section>

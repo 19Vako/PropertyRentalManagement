@@ -1,0 +1,78 @@
+@model IReadOnlyList<PropertyRental.Domain.Entities.RentalApplication>
+@using PropertyRental.Domain.Enums
+@{
+    ViewData["Title"] = "My applications";
+    var status = ViewData["Status"] as ApplicationStatus?;
+    var search = ViewData["Search"] as string;
+}
+
+<div class="page-header">
+    <h1 class="page-header__title h2">My applications</h1>
+    <p class="page-header__meta">@Model.Count applications</p>
+</div>
+
+@if (TempData["StatusMessage"] is string statusMessage)
+{
+    <div class="alert alert-success" role="status">@statusMessage</div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
+
+<form method="get" class="filter-panel row g-3 align-items-end">
+    <div class="col-sm-6 col-lg-4">
+        <label for="search" class="form-label">Search</label>
+        <input id="search" name="search" value="@search" class="form-control" placeholder="Property, city, or unit" />
+    </div>
+    <div class="col-sm-4 col-lg-3">
+        <label for="status" class="form-label">Status</label>
+        <select id="status" name="status" class="form-select">
+            <option value="">All statuses</option>
+            @foreach (var option in Enum.GetValues<ApplicationStatus>())
+            {
+                <option value="@((byte)option)" selected="@(status == option)">@option</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-primary" type="submit">Filter</button>
+        <a class="btn btn-link" asp-action="Index">Clear</a>
+    </div>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">
+        <h2>No applications match</h2>
+        <p>Try a broader search or adjust the filter settings.</p>
+    </div>
+}
+else
+{
+    <div class="table-shell table-responsive">
+        <table class="table align-middle" aria-label="Application list table">
+            <thead><tr><th scope="col">Property / unit</th><th scope="col">Move-in</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col" class="text-end">Action</th></tr></thead>
+            <tbody>
+                @foreach (var application in Model)
+                {
+                    var applicationStatusClass = application.StatusId switch
+                    {
+                        (byte)ApplicationStatus.Approved => "status-badge status-badge--success",
+                        (byte)ApplicationStatus.Rejected or (byte)ApplicationStatus.Withdrawn => "status-badge status-badge--secondary",
+                        (byte)ApplicationStatus.ReturnedForCorrection => "status-badge status-badge--warning",
+                        (byte)ApplicationStatus.Submitted or (byte)ApplicationStatus.UnderReview => "status-badge status-badge--primary",
+                        _ => "status-badge status-badge--light"
+                    };
+                    <tr>
+                        <td>@application.Unit.Property.Name / @application.Unit.UnitNumber<span class="muted-stack">@application.Unit.Property.City</span></td>
+                        <td>@(application.DesiredMoveInDate?.ToString("d") ?? "Not set")</td>
+                        <td><span class="@applicationStatusClass">@application.Status.Name</span></td>
+                        <td>@application.UpdatedUtc.ToLocalTime().ToString("g")</td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@application.Id">Open</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

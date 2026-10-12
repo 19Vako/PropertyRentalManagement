@@ -1,0 +1,51 @@
+@model IReadOnlyList<PropertyRental.Domain.Entities.Unit>
+@{
+    ViewData["Title"] = "Available units";
+    var moveInDate = (DateOnly)ViewData["MoveInDate"]!;
+}
+
+<div class="mb-4">
+    <h1 class="h2 mb-1">Available units</h1>
+    <p class="text-muted mb-0">Availability is checked for @moveInDate.ToString("D").</p>
+</div>
+
+<form method="get" class="row g-2 align-items-end mb-4">
+    <div class="col-sm-6 col-md-4">
+        <label class="form-label" for="moveInDate">Move-in date</label>
+        <input id="moveInDate" name="moveInDate" type="date" value="@moveInDate.ToString("yyyy-MM-dd")" class="form-control" />
+    </div>
+    <div class="col-auto"><button class="btn btn-outline-primary" type="submit">Check availability</button></div>
+</form>
+
+@if (Model.Count == 0)
+{
+    <p class="border-top py-4 text-muted">No units are available for this date.</p>
+}
+else
+{
+    <div class="table-responsive border-top">
+        <table class="table align-middle">
+            <thead><tr><th>Property</th><th>Unit</th><th>Location</th><th>Monthly rent</th><th>Layout</th><th>Available from</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var unit in Model)
+                {
+                    <tr>
+                        <td>@unit.Property.Name</td>
+                        <td>@unit.UnitNumber</td>
+                        <td>@unit.Property.City, @unit.Property.Region</td>
+                        <td>@unit.MonthlyRent.ToString("C")</td>
+                        <td>@unit.Bedrooms bd / @unit.Bathrooms ba</td>
+                        <td>@(unit.AvailableFrom?.ToString("D") ?? "Immediately")</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-primary"
+                               asp-controller="Applications"
+                               asp-action="Create"
+                               asp-route-unitId="@unit.Id"
+                               asp-route-desiredMoveInDate="@moveInDate.ToString("yyyy-MM-dd")">Apply</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

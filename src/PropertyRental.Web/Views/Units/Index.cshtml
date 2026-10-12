@@ -1,0 +1,80 @@
+@model IReadOnlyList<PropertyRental.Domain.Entities.Unit>
+@using PropertyRental.Domain.Enums
+@{
+    ViewData["Title"] = "Units";
+    var search = ViewData["Search"] as string;
+    var propertyId = ViewData["PropertyId"] as int?;
+    var selectedStatus = ViewData["Status"] as UnitStatus?;
+}
+
+<div class="page-header">
+    <h1 class="page-header__title h2">Units</h1>
+    <p class="page-header__meta">@Model.Count units in your properties</p>
+</div>
+
+@if (TempData["StatusMessage"] is string statusMessage)
+{
+    <div class="alert alert-success" role="status">@statusMessage</div>
+}
+
+<form method="get" class="filter-panel row g-3 align-items-end">
+    <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="search">Search</label>
+        <input id="search" name="search" value="@search" class="form-control" placeholder="Unit, property, or city" />
+    </div>
+    <div class="col-sm-4 col-lg-3">
+        <label class="form-label" for="status">Status</label>
+        <select id="status" name="status" class="form-select">
+            <option value="">All statuses</option>
+            @foreach (var option in Enum.GetValues<UnitStatus>())
+            {
+                <option value="@((byte)option)" selected="@(selectedStatus == option)">@option</option>
+            }
+        </select>
+    </div>
+    @if (propertyId.HasValue)
+    {
+        <input type="hidden" name="propertyId" value="@propertyId" />
+    }
+    <div class="col-auto d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-primary" type="submit">Filter</button>
+        <a class="btn btn-link" asp-action="Index">Clear</a>
+    </div>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">
+        <h2>No units match</h2>
+        <p>Try another search or adjust the status filter.</p>
+    </div>
+}
+else
+{
+    <div class="table-shell table-responsive">
+        <table class="table align-middle" aria-label="Units table">
+            <thead><tr><th scope="col">Unit</th><th scope="col">Property</th><th scope="col">City</th><th scope="col">Monthly rent</th><th scope="col">Layout</th><th scope="col">Status</th><th scope="col" class="text-end">Action</th></tr></thead>
+            <tbody>
+                @foreach (var unit in Model)
+                {
+                    var unitStatusClass = unit.Status switch
+                    {
+                        UnitStatus.Available => "status-badge status-badge--success",
+                        UnitStatus.Leased => "status-badge status-badge--secondary",
+                        UnitStatus.Maintenance => "status-badge status-badge--warning",
+                        _ => "status-badge status-badge--light"
+                    };
+                    <tr>
+                        <td><a asp-action="Details" asp-route-id="@unit.Id">@unit.UnitNumber</a></td>
+                        <td><a asp-controller="Properties" asp-action="Details" asp-route-id="@unit.PropertyId">@unit.Property.Name</a></td>
+                        <td>@unit.Property.City</td>
+                        <td>@unit.MonthlyRent.ToString("C")</td>
+                        <td>@unit.Bedrooms bd / @unit.Bathrooms ba</td>
+                        <td><span class="@unitStatusClass">@unit.Status</span></td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@unit.Id">Edit</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

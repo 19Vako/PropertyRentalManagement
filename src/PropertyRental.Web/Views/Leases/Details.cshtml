@@ -1,0 +1,66 @@
+@model PropertyRental.Web.Models.LeaseDetailsViewModel
+@{
+    var lease = Model.Lease;
+    ViewData["Title"] = $"Lease {lease.Id}";
+}
+
+@if (TempData["StatusMessage"] is string statusMessage)
+{
+    <div class="alert alert-success" role="status">@statusMessage</div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-warning" role="alert">@errorMessage</div>
+}
+
+@{
+    var leaseStatusClass = lease.Status.Name switch
+    {
+        "Active" => "status-badge status-badge--success",
+        "Expired" => "status-badge status-badge--secondary",
+        "Terminated" => "status-badge status-badge--warning",
+        _ => "status-badge status-badge--light"
+    };
+}
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+        <a asp-action="Index" class="text-decoration-none">Leases</a>
+        <h1 class="page-header__title h2 mt-2">Lease #@lease.Id</h1>
+        <p class="page-header__meta">@lease.Unit.Property.Name / Unit @lease.Unit.UnitNumber</p>
+    </div>
+    <span class="@leaseStatusClass">@lease.Status.Name</span>
+</div>
+
+<dl class="row g-3 border-top pt-4 card-surface p-3 mb-4">
+    <dt class="col-sm-3">Tenant</dt><dd class="col-sm-9">@Model.TenantName</dd>
+    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.TenantEmail</dd>
+    <dt class="col-sm-3">Property</dt><dd class="col-sm-9">@lease.Unit.Property.Name, @lease.Unit.Property.City</dd>
+    <dt class="col-sm-3">Unit</dt><dd class="col-sm-9">@lease.Unit.UnitNumber</dd>
+    <dt class="col-sm-3">Term</dt><dd class="col-sm-9">@lease.StartDate.ToString("D") – @lease.EndDate.ToString("D")</dd>
+    <dt class="col-sm-3">Monthly rent</dt><dd class="col-sm-9">@lease.MonthlyRent.ToString("C")</dd>
+    <dt class="col-sm-3">Created</dt><dd class="col-sm-9">@lease.CreatedUtc.ToLocalTime().ToString("g")</dd>
+    @if (lease.ClosedUtc.HasValue)
+    {
+        <div class="row">
+            <dt class="col-sm-3">Closed</dt>
+            <dd class="col-sm-9">@lease.ClosedUtc.Value.ToLocalTime().ToString("g")</dd>
+        </div>
+    }
+</dl>
+
+<div class="d-flex flex-wrap gap-2 border-top pt-3">
+    @if (Model.CanTerminate)
+    {
+        <form asp-action="Terminate" asp-route-id="@lease.Id" method="post">
+            <button type="submit" class="btn btn-outline-danger">Terminate lease</button>
+        </form>
+    }
+    @if (Model.CanMarkExpired)
+    {
+        <form asp-action="MarkExpired" asp-route-id="@lease.Id" method="post">
+            <button type="submit" class="btn btn-primary">Mark expired</button>
+        </form>
+    }
+    <a class="btn btn-outline-secondary" asp-controller="Applications" asp-action="Review" asp-route-id="@lease.ApplicationId">View application</a>
+</div>
