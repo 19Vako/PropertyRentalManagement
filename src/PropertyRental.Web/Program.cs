@@ -1,7 +1,12 @@
 using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using PropertyRental.Domain.Identity;
 using PropertyRental.Infrastructure.Data;
 using PropertyRental.Infrastructure.Identity;
@@ -25,11 +30,32 @@ builder.Services
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured.");
+var key = Encoding.UTF8.GetBytes(secretKey);
+
+builder.Services.AddAuthentication(options =>{})
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("ApplicantOnly", policy => policy.RequireRole(RoleNames.Applicant));
     options.AddPolicy("PropertyManagerOnly", policy => policy.RequireRole(RoleNames.PropertyManager));
 });
+
 builder.Services.AddScoped<IApplicationVisibilityService, ApplicationVisibilityService>();
 builder.Services.AddScoped<IManagerDashboardService, ManagerDashboardService>();
 builder.Services.AddScoped<IPropertyManagementService, PropertyManagementService>();
@@ -41,12 +67,21 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Home/AccessDenied";
 });
 
-builder.Services.AddControllersWithViews();
+// Добавлена настройка ReferenceHandler.IgnoreCycles для предотвращения ошибок циклических ссылок
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        // Сериализуем имена свойств в camelCase для совместимости с мобильным клиентом.
+        // RowVersion (byte[]) по-прежнему отдаётся как base64-строка (поведение по умолчанию).
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+    });
+
 builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
-// Принудительно устанавливаем культуру en-US для корректной обработки точек в decimal и датах
 var supportedCultures = new[] { new CultureInfo("en-US") };
 app.UseRequestLocalization(new RequestLocalizationOptions
 {
@@ -70,6 +105,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

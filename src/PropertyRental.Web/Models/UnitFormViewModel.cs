@@ -21,12 +21,17 @@ public sealed class UnitFormViewModel
     [Range(0, byte.MaxValue)]
     public byte Bedrooms { get; set; }
 
+     
     [Range(typeof(decimal), "0", "99.9")]
-    public decimal Bathrooms { get; set; }
+    public decimal? Bathrooms { get; set; }
 
+     
     [EnumDataType(typeof(UnitStatus))]
-    public UnitStatus Status { get; set; } = UnitStatus.Available;
+    public UnitStatus? Status { get; set; }
 
     [DataType(DataType.Date)]
     public DateOnly? AvailableFrom { get; set; }
+
+ 
+    public string UnitTypeId { get; set; } = string.Empty;
 }

@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PropertyRental.Domain.Entities;
 using PropertyRental.Domain.Enums;
+using PropertyRental.Domain.Identity;
 using PropertyRental.Web.Models;
 using PropertyRental.Web.Services;
+
 
 namespace PropertyRental.Web.Controllers;
 
@@ -12,6 +15,8 @@ public sealed class ApplicationsController(
     IRentalApplicationWorkflowService workflowService,
     IPropertyManagementService propertyManagementService) : Controller
 {
+    // --- WEB (MVC) METHODS ---
+
     [Authorize(Policy = "ApplicantOnly")]
     public async Task<IActionResult> Index(
         ApplicationStatus? status,
@@ -309,6 +314,127 @@ public sealed class ApplicationsController(
         return RedirectToAction(nameof(Review), new { id = model.ApplicationId });
     }
 
+    // --- MOBILE REST API METHODS (JWT / JSON) ---
+
+    [HttpGet("api/applications")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    public async Task<IActionResult> GetApplicationsApi(
+        [FromQuery] ApplicationStatus? status,
+        [FromQuery] string? search,
+        CancellationToken cancellationToken)
+    {
+        if (User.IsInRole(RoleNames.PropertyManager))
+        {
+            var queue = await workflowService.GetReviewQueueAsync(User, status, search, cancellationToken);
+            return Ok(queue);
+        }
+
+        var myApplications = await workflowService.GetMyApplicationsAsync(User, status, search, cancellationToken);
+        return Ok(myApplications);
+    }
+
+    [HttpPost("api/applications")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "ApplicantOnly")]
+    public async Task<IActionResult> CreateApplicationApi(
+        [FromBody] RentalApplicationFormViewModel model,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var application = await workflowService.CreateDraftAsync(User, model, cancellationToken);
+            return CreatedAtAction(nameof(Details), new { id = application.Id }, application);
+        }
+        catch (ApplicationWorkflowException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpGet("api/applications/{id:int}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    public async Task<IActionResult> GetApplicationApi(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        RentalApplication? application;
+        if (User.IsInRole(RoleNames.PropertyManager))
+        {
+            application = await workflowService.GetApplicationForReviewAsync(User, id, cancellationToken);
+        }
+        else
+        {
+            application = await workflowService.GetMyApplicationAsync(User, id, cancellationToken);
+        }
+
+        return application is null
+            ? NotFound(new { message = "Application not found." })
+            : Ok(application);
+    }
+
+    [HttpPost("api/applications/{id:int}/withdraw")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "ApplicantOnly")]
+    public async Task<IActionResult> WithdrawApplicationApi(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!await workflowService.WithdrawAsync(User, id, cancellationToken))
+            {
+                return NotFound(new { message = "Application not found." });
+            }
+
+            return Ok(new { message = "Application withdrawn." });
+        }
+        catch (ApplicationWorkflowException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpPatch("api/applications/{id:int}/status")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "PropertyManagerOnly")]
+    public async Task<IActionResult> UpdateApplicationStatusApi(
+        int id,
+        [FromBody] ApiReviewActionDto model,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            bool success = model.Action?.ToLowerInvariant() switch
+            {
+                "approve" => await workflowService.ApproveAsync(User, id, model.Notes ?? string.Empty, cancellationToken),
+                "reject" => await workflowService.RejectAsync(User, id, model.Notes ?? string.Empty, cancellationToken),
+                "return" => await workflowService.ReturnForCorrectionAsync(User, id, model.Notes ?? string.Empty, cancellationToken),
+                "startreview" => await workflowService.StartReviewAsync(User, id, cancellationToken),
+                _ => false
+            };
+
+            if (!success)
+            {
+                return NotFound(new { message = "Application not found or action not allowed." });
+            }
+
+            return Ok(new { message = "Application status updated successfully." });
+        }
+        catch (ApplicationWorkflowException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    // --- HELPERS ---
+
     private async Task<Unit?> FindAvailableUnitAsync(int unitId, DateOnly date, CancellationToken cancellationToken)
     {
         var units = await propertyManagementService.GetAvailableUnitsAsync(date, cancellationToken);
@@ -361,4 +487,10 @@ public sealed class ApplicationsController(
         MonthlyIncome = application.MonthlyIncome,
         ApplicantMessage = application.ApplicantMessage
     };
+}
+
+public class ApiReviewActionDto
+{
+    public string? Action { get; set; } // approve, reject, return, startreview
+    public string? Notes { get; set; }
 }

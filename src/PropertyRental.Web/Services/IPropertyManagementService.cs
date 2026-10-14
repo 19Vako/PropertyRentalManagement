@@ -11,6 +11,10 @@ public interface IPropertyManagementService
         bool? isActive,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Property>> GetAllActivePropertiesAsync(
+        string? search,
+        CancellationToken cancellationToken = default);
+
     Task<Property?> GetPropertyAsync(string managerUserId, int propertyId, CancellationToken cancellationToken = default);
 
     Task<Property> CreatePropertyAsync(Property property, string managerUserId, CancellationToken cancellationToken = default);

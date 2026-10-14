@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PropertyRental.Domain.Entities;
@@ -11,6 +12,8 @@ namespace PropertyRental.Web.Controllers;
 [Authorize(Policy = "PropertyManagerOnly")]
 public sealed class PropertiesController(IPropertyManagementService propertyService) : Controller
 {
+    // --- WEB (MVC) METHODS ---
+
     public async Task<IActionResult> Index(string? search, bool? isActive, CancellationToken cancellationToken)
     {
         var properties = await propertyService.GetPropertiesAsync(
@@ -96,6 +99,114 @@ public sealed class PropertiesController(IPropertyManagementService propertyServ
         TempData["StatusMessage"] = "Property deleted.";
         return RedirectToAction(nameof(Index));
     }
+
+    // --- MOBILE REST API METHODS (JWT / JSON) ---
+
+    [HttpGet("api/properties")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    public async Task<IActionResult> GetPropertiesApi(
+        [FromQuery] string? search,
+        [FromQuery] bool? isActive,
+        CancellationToken cancellationToken)
+    {
+        // Managers browse their own properties; applicants browse all active properties.
+        if (User.IsInRole(RoleNames.PropertyManager))
+        {
+            var own = await propertyService.GetPropertiesAsync(
+                CurrentUserId(), search, isActive, cancellationToken);
+            return Ok(own);
+        }
+
+        var properties = await propertyService.GetAllActivePropertiesAsync(search, cancellationToken);
+        return Ok(properties);
+    }
+
+    [HttpGet("api/properties/{id:int}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    public async Task<IActionResult> GetPropertyApi(int id, CancellationToken cancellationToken)
+    {
+        Property? property;
+        if (User.IsInRole(RoleNames.PropertyManager))
+        {
+            property = await propertyService.GetPropertyAsync(CurrentUserId(), id, cancellationToken);
+        }
+        else
+        {
+            var browsable = await propertyService.GetAllActivePropertiesAsync(null, cancellationToken);
+            property = browsable.FirstOrDefault(item => item.Id == id);
+        }
+
+        return property is null ? NotFound(new { message = "Property not found." }) : Ok(property);
+    }
+
+    [HttpGet("api/properties/{id:int}/units")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "PropertyManagerOnly")]
+    public async Task<IActionResult> GetPropertyUnitsApi(int id, CancellationToken cancellationToken)
+    {
+        var units = await propertyService.GetUnitsAsync(
+            CurrentUserId(), id, search: null, status: null, cancellationToken);
+        return Ok(units);
+    }
+
+    [HttpPost("api/properties")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "PropertyManagerOnly")]
+    public async Task<IActionResult> CreatePropertyApi(
+        [FromBody] PropertyFormViewModel model,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var property = await propertyService.CreatePropertyAsync(Map(model), CurrentUserId(), cancellationToken);
+        return CreatedAtAction(nameof(GetPropertyApi), new { id = property.Id }, property);
+    }
+
+    [HttpPut("api/properties/{id:int}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "PropertyManagerOnly")]
+    public async Task<IActionResult> UpdatePropertyApi(
+        int id,
+        [FromBody] PropertyFormViewModel model,
+        CancellationToken cancellationToken)
+    {
+        if (id != model.Id)
+        {
+            return BadRequest(new { message = "Id mismatch." });
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        if (!await propertyService.UpdatePropertyAsync(Map(model), CurrentUserId(), cancellationToken))
+        {
+            return NotFound(new { message = "Property not found." });
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("api/properties/{id:int}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "PropertyManagerOnly")]
+    public async Task<IActionResult> DeletePropertyApi(int id, CancellationToken cancellationToken)
+    {
+        var result = await propertyService.DeletePropertyAsync(CurrentUserId(), id, cancellationToken);
+        if (result == DeleteResult.NotFound)
+        {
+            return NotFound(new { message = "Property not found." });
+        }
+
+        if (result == DeleteResult.HasDependents)
+        {
+            return Conflict(new { message = "Remove or archive this property's units before deleting it." });
+        }
+
+        return Ok(new { message = "Property deleted." });
+    }
+
+    // --- HELPERS ---
 
     private string CurrentUserId() =>
         User.FindFirstValue(ClaimTypes.NameIdentifier)

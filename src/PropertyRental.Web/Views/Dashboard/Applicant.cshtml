@@ -20,7 +20,7 @@
 {
     <div class="alert alert-warning" role="alert">@errorMessage</div>
 }
-<div asp-validation-summary="ModelOnly" class="alert alert-danger validation-summary"></div>
+
 
 <form asp-controller="Dashboard" asp-action="Applicant" method="get" class="filter-panel row g-3 align-items-end">
     <div class="col-sm-6 col-lg-2">
@@ -40,7 +40,7 @@
     <div class="col-sm-6 col-lg-2">
         <label for="moveInTo" class="form-label">Move-in to</label>
         <input id="moveInTo" name="MoveInTo" type="date" value="@Model.MoveInTo?.ToString("yyyy-MM-dd")" class="form-control" />
-        <span asp-validation-for="MoveInTo" class="text-danger"></span>
+
     </div>
     <div class="col-sm-6 col-lg-3">
         <label for="propertyId" class="form-label">Property</label>

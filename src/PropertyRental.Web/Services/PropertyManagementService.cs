@@ -38,6 +38,25 @@ public sealed class PropertyManagementService(
         return await query.OrderBy(property => property.Name).ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Property>> GetAllActivePropertiesAsync(
+        string? search,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<Property> query = dbContext.Properties.AsNoTracking()
+            .Include(property => property.Units)
+            .Where(property => property.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(property => property.Name.Contains(term)
+                || property.City.Contains(term)
+                || property.StreetAddress.Contains(term));
+        }
+
+        return await query.OrderBy(property => property.Name).ToListAsync(cancellationToken);
+    }
+
     public async Task<Property?> GetPropertyAsync(
         string managerUserId,
         int propertyId,
@@ -203,8 +222,7 @@ public sealed class PropertyManagementService(
     {
         await RequirePropertyManagerAsync(managerUserId);
         var propertyExists = await dbContext.Properties.AnyAsync(
-            property => property.Id == unit.PropertyId
-                && property.IsActive,
+            property => property.Id == unit.PropertyId,
             cancellationToken);
         if (!propertyExists)
         {
