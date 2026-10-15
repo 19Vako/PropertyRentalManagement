@@ -107,7 +107,7 @@ export const ApplicationListWidget: React.FC = () => {
           onPress={() => setStatusPickerOpen(true)}
         >
           <Text style={styles.filterBtnText}>
-            {selectedStatus ? `Status: ${selectedStatus}` : "Status: All"}
+            {selectedStatus ? `Status: ${selectedStatus}` : "Select Status"}
           </Text>
         </TouchableOpacity>
 
@@ -164,22 +164,6 @@ export const ApplicationListWidget: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Filter by status</Text>
-            <TouchableOpacity
-              style={styles.option}
-              onPress={() => {
-                setStatus(null);
-                setStatusPickerOpen(false);
-              }}
-            >
-              <Text
-                style={[
-                  styles.optionText,
-                  !selectedStatus && styles.optionActive,
-                ]}
-              >
-                All Statuses
-              </Text>
-            </TouchableOpacity>
             {APPLICATION_STATUSES.map((status) => (
               <TouchableOpacity
                 key={status}

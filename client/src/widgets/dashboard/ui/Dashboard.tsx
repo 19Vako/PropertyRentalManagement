@@ -180,8 +180,7 @@ const ApplicantDashboard: React.FC = () => {
               </Text>
             </View>
             <Text style={styles.cardMeta}>
-              Applicant:{" "}
-              {item.applicantName || item.applicantInfo?.firstName || "—"}
+              Applicantion:{item.id} | Status: {getStatusName(item.status)}
             </Text>
           </View>
         )}
