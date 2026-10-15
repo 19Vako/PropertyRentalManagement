@@ -3,6 +3,7 @@ import { useFilteredApplications } from "@/entities/application/model/useFiltere
 import {
   APPLICATION_STATUSES,
   Application,
+  ApplicationStatus,
   TERMINAL_STATUSES,
   getStatusName,
 } from "@/entities/application/types";
@@ -48,7 +49,7 @@ export const ApplicationListWidget: React.FC = () => {
     isLoading,
     error,
   } = useFilteredApplications({
-    status: selectedStatus ?? undefined,
+    status: (selectedStatus as ApplicationStatus) ?? undefined,
   });
 
   const withdrawMutation = useWithdrawApplication();
@@ -141,27 +142,18 @@ export const ApplicationListWidget: React.FC = () => {
                 />
               </View>
 
-              <Text style={styles.cardMeta}>
-                Applicant:{" "}
-                {item.applicantName || item.applicantInfo?.firstName || "—"}
-              </Text>
+              <Text style={styles.cardMeta}>Applicantion:{item.id}</Text>
 
-              {isManager ? (
-                <Text style={styles.roleTag}>
-                  Manager View (All Properties)
-                </Text>
-              ) : (
-                canWithdraw(item) && (
-                  <TouchableOpacity
-                    style={styles.withdrawBtn}
-                    onPress={() => handleWithdraw(item.id)}
-                    disabled={withdrawMutation.isPending}
-                  >
-                    <Text style={styles.withdrawText}>
-                      {withdrawMutation.isPending ? "Withdrawing…" : "Withdraw"}
-                    </Text>
-                  </TouchableOpacity>
-                )
+              {canWithdraw(item) && (
+                <TouchableOpacity
+                  style={styles.withdrawBtn}
+                  onPress={() => handleWithdraw(item.id)}
+                  disabled={withdrawMutation.isPending}
+                >
+                  <Text style={styles.withdrawText}>
+                    {withdrawMutation.isPending ? "Withdrawing…" : "Withdraw"}
+                  </Text>
+                </TouchableOpacity>
               )}
             </TouchableOpacity>
           );
