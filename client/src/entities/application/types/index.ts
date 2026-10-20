@@ -1,9 +1,10 @@
 export type ApplicationStatusName =
   | "Draft"
   | "Submitted"
-  | "Returned"
+  | "UnderReview"
+  | "ReturnedForCorrection"
   | "Approved"
-  | "Denied"
+  | "Rejected"
   | "Withdrawn";
 
 export interface ApplicationStatusObject {
@@ -17,19 +18,23 @@ export type ApplicationStatus = ApplicationStatusName | ApplicationStatusObject;
 export const APPLICATION_STATUSES: ApplicationStatusName[] = [
   "Draft",
   "Submitted",
-  "Returned",
+  "UnderReview",
+  "ReturnedForCorrection",
   "Approved",
-  "Denied",
+  "Rejected",
   "Withdrawn",
 ];
 
 export const TERMINAL_STATUSES: ApplicationStatusName[] = [
   "Approved",
-  "Denied",
+  "Rejected",
   "Withdrawn",
 ];
 
-export const EDITABLE_STATUSES: ApplicationStatusName[] = ["Draft", "Returned"];
+export const EDITABLE_STATUSES: ApplicationStatusName[] = [
+  "Draft",
+  "ReturnedForCorrection",
+];
 
 export const getStatusName = (
   status: ApplicationStatus,
@@ -45,47 +50,58 @@ export const isEditableStatus = (status: ApplicationStatus): boolean => {
   return EDITABLE_STATUSES.includes(name);
 };
 
+export interface ApplicationReview {
+  id: number;
+  applicationId: number;
+  reviewerUserId: string;
+  decision: string;
+  notes: string;
+  createdUtc: string;
+}
+
+export interface RentalApplicationActivity {
+  id: number;
+  applicationId: number;
+  actorUserId: string;
+  type: string;
+  notes?: string;
+  createdUtc: string;
+}
+
 export interface Application {
-  id: string;
-  unitId: string;
+  id: number;
+  unitId: number;
+  applicantUserId?: string;
+  statusId?: number;
   status: ApplicationStatus;
-  applicantName?: string;
-  unitNumber?: string;
-  propertyId?: number;
-  applicantInfo?: {
-    firstName?: string;
-    lastName?: string;
-    phone?: string;
-    email?: string;
-    currentAddress?: string;
-  };
+  desiredMoveInDate?: string;
+  householdSize?: number;
+  monthlyIncome?: number;
+  applicantMessage?: string;
+  submittedUtc?: string;
   createdUtc?: string;
   updatedUtc?: string;
-  residences?: ApplicationResidence[];
 
-  history?: ApplicationHistoryItem[];
-  statusHistory?: ApplicationHistoryItem[];
-}
-
-export interface ApplicationResidence {
-  id?: string;
-  address: string;
-  landlordName: string;
-  landlordPhone: string;
-  moveInDate: string;
-  moveOutDate: string;
-}
-
-export interface ApplicationHistoryItem {
-  id: string;
-  status: ApplicationStatus;
-  outcome?: string;
-  comment?: string;
-  changedBy: string;
-  changedAt: string;
+  // Связанные данные с бэкенда (Include)
+  unit?: {
+    id: number;
+    unitNumber: string;
+    propertyId: number;
+    property?: {
+      id: number;
+      name: string;
+      city: string;
+    };
+  };
+  applicationReviews?: ApplicationReview[];
+  activities?: RentalApplicationActivity[];
 }
 
 export interface ApplicationFilterParams {
   status?: ApplicationStatus;
   propertyId?: number | null;
+  unitId?: number | null;
+  search?: string;
+  moveInFrom?: string;
+  moveInTo?: string;
 }

@@ -17,7 +17,7 @@ import { ReviewFormValues, reviewSchema } from "../model/schema";
 
 interface ReviewModalProps {
   visible: boolean;
-  applicationId: string;
+  applicationId: number;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -39,10 +39,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     formState: { errors },
   } = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewSchema),
-    defaultValues: { outcome: "Approve", comment: "" },
+    defaultValues: { action: "approve", notes: "" },
   });
 
-  const selectedOutcome = watch("outcome");
+  const selectedAction = watch("action");
 
   const onSubmit = async (data: ReviewFormValues) => {
     try {
@@ -51,15 +51,15 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
       if (__DEV__) {
         console.log(
-          "Application reviewed successfully with outcome:",
-          data.outcome,
+          "Application reviewed successfully with action:",
+          data.action,
         );
       }
       queryClient.invalidateQueries({ queryKey: ["applications"] });
 
       Alert.alert(
         "Success",
-        `Application successfully marked as ${data.outcome}`,
+        `Application action '${data.action}' executed successfully.`,
       );
       reset();
       onSuccess();
@@ -70,7 +70,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         error?.response?.data?.message ||
         "Failed to process application review.";
 
-      // Handles active lease conflict or terminal status constraints returned by backend
       Alert.alert("Review Error", serverMessage);
     } finally {
       setLoading(false);
@@ -83,14 +82,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         <View style={styles.content}>
           <Text style={styles.title}>Review Application</Text>
 
-          {/* Outcome Selection */}
-          <Text style={styles.label}>Outcome:</Text>
+          {/* Action Selection */}
+          <Text style={styles.label}>Action:</Text>
           <Controller
             control={control}
-            name="outcome"
+            name="action"
             render={({ field: { value, onChange } }) => (
               <View style={styles.outcomeRow}>
-                {(["Approve", "Return", "Deny"] as const).map((item) => (
+                {(["approve", "reject", "return", "startreview"] as const).map((item) => (
                   <TouchableOpacity
                     key={item}
                     style={[
@@ -113,26 +112,26 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             )}
           />
 
-          {/* Comment Field */}
+          {/* Notes Field */}
           <Text style={styles.label}>
-            Comment {selectedOutcome !== "Approve" ? "*" : "(Optional)"}:
+            Notes {selectedAction === "return" || selectedAction === "reject" ? "*" : "(Optional)"}:
           </Text>
           <Controller
             control={control}
-            name="comment"
+            name="notes"
             render={({ field: { onChange, value } }) => (
               <TextInput
-                style={[styles.input, errors.comment && styles.inputError]}
-                placeholder="Enter review comments..."
+                style={[styles.input, errors.notes && styles.inputError]}
+                placeholder="Enter review notes..."
                 multiline
                 numberOfLines={4}
                 onChangeText={onChange}
-                value={value}
+                value={value ?? ""}
               />
             )}
           />
-          {errors.comment && (
-            <Text style={styles.errorText}>{errors.comment.message}</Text>
+          {errors.notes && (
+            <Text style={styles.errorText}>{errors.notes.message}</Text>
           )}
 
           {/* Actions */}
@@ -177,17 +176,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   label: { fontWeight: "600", marginBottom: 6, marginTop: 12 },
-  outcomeRow: { flexDirection: "row", gap: 8, marginBottom: 10 },
+  outcomeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
   outcomeBtn: {
-    flex: 1,
-    padding: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: "#d1d5db",
     borderRadius: 8,
     alignItems: "center",
   },
   outcomeBtnActive: { backgroundColor: "#2563eb", borderColor: "#2563eb" },
-  outcomeText: { color: "#374151" },
+  outcomeText: { color: "#374151", fontSize: 12 },
   outcomeTextActive: { color: "#fff", fontWeight: "bold" },
   input: {
     borderWidth: 1,
@@ -204,5 +203,5 @@ const styles = StyleSheet.create({
   btn: { flex: 1, padding: 14, borderRadius: 8, alignItems: "center" },
   cancelBtn: { backgroundColor: "#6b7280" },
   submitBtn: { backgroundColor: "#16a34a" },
-  btnText: { color: "#fff", fontWeight: "bold" },
-});
+  btnText: { color: "#fff", fontWeight: "bold"}},
+);

@@ -23,8 +23,8 @@ import { ApplicantInfoSection } from "./ApplicantInfoSection";
 import { SummarySection } from "./SummarySection";
 
 interface RentalApplicationWizardProps {
-  unitId: string;
-  applicationId?: string;
+  unitId: number;  
+  applicationId?: number; 
   initialStatus?: ApplicationStatus;
   initialData?: Partial<ApplicationWizardValues>;
   onSuccess?: () => void;

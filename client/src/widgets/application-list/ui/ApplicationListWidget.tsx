@@ -21,12 +21,14 @@ import {
   View,
 } from "react-native";
 
+ 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "#6b7280",
   Submitted: "#2563eb",
-  Returned: "#d97706",
+  UnderReview: "#7c3aed",
+  ReturnedForCorrection: "#d97706",
   Approved: "#16a34a",
-  Denied: "#dc2626",
+  Rejected: "#dc2626",
   Withdrawn: "#9ca3af",
 };
 
@@ -59,10 +61,12 @@ export const ApplicationListWidget: React.FC = () => {
 
   const applicationList = (applications ?? []) as Application[];
 
-  const handleOpen = (id: string) =>
-    router.push({ pathname: "/application/[id]", params: { id } });
 
-  const handleWithdraw = (id: string) =>
+  const handleOpen = (id: number) =>
+    router.push({ pathname: "/application/[id]", params: { id: String(id) } });
+
+
+  const handleWithdraw = (id: number) =>
     withdrawMutation.mutate(id, {
       onError: (err: any) => {
         if (__DEV__) console.error("Failed to withdraw application:", err);
@@ -74,9 +78,7 @@ export const ApplicationListWidget: React.FC = () => {
     return (
       !isManager &&
       !TERMINAL_STATUSES.includes(statusName) &&
-      (item.applicantInfo?.email
-        ? item.applicantInfo.email === user?.email
-        : true)
+      (item.applicantUserId ? item.applicantUserId === user?.email : true)
     );
   };
 
@@ -117,8 +119,8 @@ export const ApplicationListWidget: React.FC = () => {
       </View>
 
       <FlatList
-        data={applicationList}
-        keyExtractor={(item) => item.id}
+        data={applicationList} 
+        keyExtractor={(item) => String(item.id)}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No applications found.</Text>
         }
@@ -132,7 +134,7 @@ export const ApplicationListWidget: React.FC = () => {
             >
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>
-                  Unit #{item.unitNumber || item.unitId}
+                  Unit #{item.unit?.unitNumber || item.unitId}
                 </Text>
                 <View
                   style={[
@@ -142,7 +144,12 @@ export const ApplicationListWidget: React.FC = () => {
                 />
               </View>
 
-              <Text style={styles.cardMeta}>Applicantion:{item.id}</Text>
+              <Text style={styles.cardMeta}>Application ID: {item.id}</Text>
+              {item.unit?.property && (
+                <Text style={styles.cardMeta}>
+                  Property: {item.unit.property.name} ({item.unit.property.city})
+                </Text>
+              )}
 
               {canWithdraw(item) && (
                 <TouchableOpacity
@@ -286,7 +293,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   cardMeta: { fontSize: 13, color: "#6b7280", marginBottom: 4 },
-  roleTag: { color: "#059669", fontSize: 12, marginTop: 4, fontWeight: "600" },
   withdrawBtn: {
     marginTop: 10,
     alignSelf: "flex-start",

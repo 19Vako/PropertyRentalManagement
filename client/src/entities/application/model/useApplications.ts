@@ -4,9 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 export function useApplications(options?: { enabled?: boolean }) {
   const user = useAuthStore((state) => state.user);
-  const isManager =
-    user?.roles?.includes("Property Manager") ||
-    user?.roles?.includes("PropertyManager");
+  const isManager = user?.roles?.includes("Property Manager") || user?.roles?.includes("PropertyManager");
 
   return useQuery({
     queryKey: ["applications", isManager ? "manager" : "applicant"],

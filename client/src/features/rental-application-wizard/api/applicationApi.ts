@@ -10,10 +10,11 @@ export const applicationApi = {
   },
 
   update: async (
-    id: string,
+    id: number,  
     data: ApplicationPayload,
     idempotencyKey: string,
   ) => {
+   
     const response = await apiClient.put(`/applications/${id}`, data, {
       headers: { "Idempotency-Key": idempotencyKey },
     });

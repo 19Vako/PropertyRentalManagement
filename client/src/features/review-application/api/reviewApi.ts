@@ -1,14 +1,14 @@
 import { apiClient } from "@/shared/api/client";
 
 export interface ReviewPayload {
-  outcome: "Approve" | "Return" | "Deny";
-  comment?: string;
+  action: "approve" | "reject" | "return" | "startreview";
+  notes?: string;
 }
 
 export const reviewApi = {
-  submitReview: async (applicationId: string, payload: ReviewPayload) => {
-    const response = await apiClient.post(
-      `/applications/${applicationId}/review`,
+  submitReview: async (applicationId: number, payload: ReviewPayload) => {
+    const response = await apiClient.patch(
+      `/applications/${applicationId}/status`,
       payload,
     );
     return response.data;

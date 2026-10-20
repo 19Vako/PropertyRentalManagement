@@ -7,12 +7,12 @@ export const applicationApi = {
     const response = await apiClient.get("/applications", { params });
     return response.data;
   },
-  getById: async (id: string): Promise<Application> => {
+  getById: async (id: string | number): Promise<Application> => {
     const response = await apiClient.get<Application>(`/applications/${id}`);
     return response.data;
   },
 
-  withdraw: async (id: string): Promise<void> => {
+  withdraw: async (id: string | number): Promise<void> => {
     await apiClient.post(`/applications/${id}/withdraw`);
   },
 
@@ -26,7 +26,7 @@ export const applicationApi = {
   },
 };
 
-export function useApplication(id: string) {
+export function useApplication(id: string | number) {
   return useQuery({
     queryKey: ["applications", id],
     queryFn: () => applicationApi.getById(id),
@@ -37,7 +37,7 @@ export function useApplication(id: string) {
 export function useWithdrawApplication() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => applicationApi.withdraw(id),
+    mutationFn: (id: string | number) => applicationApi.withdraw(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
     },

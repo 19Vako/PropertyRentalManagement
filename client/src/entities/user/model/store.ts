@@ -27,6 +27,7 @@ export const useAuthStore = create<UserState>((set) => ({
     }
   },
 
+  
   loadSession: async () => {
     try {
       set({ isLoadingSession: true });
